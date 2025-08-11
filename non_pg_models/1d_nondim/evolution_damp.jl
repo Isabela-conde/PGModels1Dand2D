@@ -1,7 +1,6 @@
 using SparseArrays
 using LinearAlgebra
 using JLD2
-using PyPlot
 
 @doc raw"""
     LHS, RHS, rhs = build_linear_system(model::Model)
@@ -55,6 +54,7 @@ function build_linear_system(model::Model)
     ν = model.ν
     κ = model.κ
     z = model.z
+    r = model.r
     Δt = model.Δt
     canonical = model.canonical
     v₀ = model.v₀
@@ -82,6 +82,8 @@ function build_linear_system(model::Model)
         add_to_matrix!(RHS, row, row, 1/Δt)
         # first term RHS
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j], 1)
+        add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -r[j])
+
         # second term RHS
         add_to_CN_matrices!(LHS, RHS, row, ndof, -1)
         # third term RHS
@@ -90,6 +92,7 @@ function build_linear_system(model::Model)
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j-1], ν_z*fd_z[1] + ν[j]*fd_zz[1])
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
+
 
         # 2nd eqtn: v_t = -u + (ν*v_z)_z
         row = imap[2, j]
@@ -102,8 +105,11 @@ function build_linear_system(model::Model)
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j-1], ν_z*fd_z[1] + ν[j]*fd_zz[1])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
+        add_to_CN_matrices!(LHS, RHS, row, imap[2, j], -r[j])
+        rhs[row] = -r[j]*v₀
 
-        # 3rd eqtn: b_t = -u + [κ*(1 + b_z)]_z
+
+        # 3rd eqtn: b_t = -u + [κ*(1 + b_z)]_z -r*b
         row = imap[3, j]
         # time derivative
         add_to_matrix!(LHS, row, row, 1/Δt)
@@ -115,6 +121,8 @@ function build_linear_system(model::Model)
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j],   (κ_z*fd_z[2] + κ[j]*fd_zz[2]))
         add_to_CN_matrices!(LHS, RHS, row, imap[3, j+1], (κ_z*fd_z[3] + κ[j]*fd_zz[3]))
         rhs[row] = N^2*κ_z
+        # third term
+        # add_to_CN_matrices!(LHS, RHS, row, imap[3, j], -r)
     end
 
     # Boundary Conditions: Bottom
@@ -277,10 +285,9 @@ function set_ν_κ_BT12!(model, u, v, b, z)
     end
 
     # smooth κ_new with a 5-point moving average
-    κ_smooth = copy(κ_new) #k_smooth a copy of κ_new
-    w = 0.25
-    for j in 2:nz-1
-        κ_smooth[j] =  ( w*κ_new[j-1] + (1-2*w)*κ_new[j] + w*κ_new[j+1] )  # κ_new[j] 
+    κ_smooth = copy(κ_new)
+    for j in 3:nz-2
+        κ_smooth[j] = (κ_new[j-2] + κ_new[j-1] + κ_new[j] + κ_new[j+1] + κ_new[j+2]) / 5
     end
     # keep boundaries unsmoothed
     κ_smooth[1] = κ_new[1]
