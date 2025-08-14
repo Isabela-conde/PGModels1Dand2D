@@ -21,24 +21,21 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
     # load steady state solutions
 
-    ds = Dataset("/Users/isabelaconde/Desktop/tilted_bl/decay_soln_V20_mu1e0_eps1e-3S1e-3.nc")
-    usteady = ds["u"][:]
-    vsteady = ds["v"][:]
-    dbdz_steady = ds["dbdz"][:]
-    zsteady = ds["z"][:]
 
     # init plot
-    fig, ax = subplots(1, 3, figsize=(33pc, 25pc*1.62/3), sharey=true)
+    fig, ax = subplots(2, 2, figsize=(30pc, 35pc))
 
 
     ax[1].set_xlabel(L"Cross-slope flow $\tilde{u}$")
     ax[1].set_ylabel(L"Vertical coordinate $\tilde{z}$")
-
     ax[2].set_xlabel(L"Along-slope flow $\tilde{v}$")
 
-    ax[3].set_xlabel(L"Stratification $N^2 + \partial_{\tilde z} \tilde b$")
+    ax[3].set_xlabel(L"Cross-slope transport $\mathcal{M}$")
+    ax[2].set_ylabel(L"Vertical coordinate $\tilde{z}$")
 
-    subplots_adjust(bottom=0.2, top=0.9, left=0.1, right=0.9, wspace=0.2, hspace=0.6)
+    ax[4].set_xlabel(L"Stratification $N^2 + \partial_{\tilde z} \tilde b$")
+
+    subplots_adjust(bottom=0.15, top=0.92, left=0.1, right=0.9, wspace=0.25, hspace=0.25)
 
     for a in ax
         a.ticklabel_format(style="sci", axis="x", scilimits=(-3, 3))
@@ -47,9 +44,19 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
     # color map
     colors = pl.cm.viridis(range(1, 0, length=size(datafiles, 1)-1))
+    # transport_timeseries = joinpath(@__DIR__, "/out/transport_timeseries.jld2")
+    Q_ts = jldopen("/Users/isabelaconde/Documents/GitHub/PGModels1Dand2D/non_pg_models/1d_nondim/out/transport_timeseries.jld2", "r")
+
+    Q = Q_ts["Q"]
+    ts = Q_ts["t"]
+
 
     # zoomed z
     ax[1].set_ylim([0, z_max])
+    ax[2].set_ylim([0, z_max])
+    ax[4].set_ylim([0, z_max])
+
+    # ax[3].set_xlim([-0.05, 0.05])
 
     # plot data from `datafiles`
     for i ∈ eachindex(datafiles)
@@ -58,7 +65,8 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
         u = d["u"]
         v = d["v"]
         b = d["b"]
-        t = d["t"]
+        t = d["t"]        
+        
         model = d["model"]
         close(d)
         z = model.z
@@ -66,13 +74,16 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
         # stratification
         bz = differentiate(b, z)
+        # bt = -u .+ differentiate(κ.*(N^2 .+ bz),z)
+        # bt = differentiate(b, t)
 
         # colors and labels
         if t == Inf
             label = "Steady state"
         else
-            label = string(L"$\tilde{t}/\tau_A$ = ", Int64(round(t/τ_A)))
+            label = string(L"$\tilde{t}$ = ", Int64(round(t)))
         end
+
         if i == 1
             color = "mediumblue"
         else
@@ -81,20 +92,28 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
         # plot
         ax[1].plot(u, z, c=color)
-        # ax[1].plot(usteady, zsteady, c="r", ls="--", label="Steady State")
-        ax[2].plot(v, z, c=color)
-        # ax[2].plot(vsteady, zsteady, c="r", ls="--", label=(i == length(datafiles) ? "Steady State" : ""))
-        # ax[2].axvline(Px, lw=1.0, c=color, ls="--", label=(i == length(datafiles) ? L"\partial_{\tilde x} \tilde P" : ""))
-        ax[3].plot(N^2 .+ bz,  z, c=color, label=label)
-        # ax[3].plot(b,  z, c=color, label=label)
-        # ax[3].plot(N^2 .+ dbdz_steady, zsteady, c="r", ls="--")
+        # ax[3].plot(bt, z, c=color)
+        ax[2].plot(v,z, color = color)
+        ax[4].plot(N^2 .+ bz,  z, c=color, label=label)
+
     end
 
-    ax[2].legend()
-    ax[3].legend()
+    ax[3].plot(Q,ts, c ="k")
+    ax[3].set_ylim([0, 1.1*maximum(ts)])
+    # ax[2].legend()
+    ax[3].set_ylabel(L"Time $\tilde{t}$")
+    ax[3].tick_params(
+        bottom=true, left=true,   # show tick marks
+        labelbottom=true, labelleft=true                # show labels
+    )
+    ax[3].invert_yaxis()
 
+
+    ax[4].legend()
 
     savefig(fname)
     println(fname)
     plt.close()
 end
+
+

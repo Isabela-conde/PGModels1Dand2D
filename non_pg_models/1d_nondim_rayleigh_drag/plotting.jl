@@ -1,8 +1,6 @@
 using PyPlot
 using PyCall
 using JLD2
-using NCDatasets
-
 
 plt.style.use(joinpath(@__DIR__, "../../plots.mplstyle"))
 close("all")
@@ -18,17 +16,8 @@ pc = 1/6 # pica
 Plot profiles from JLD2 snapshot files in the `datafiles` list.
 """
 function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
-
-    # load steady state solutions
-
-    ds = Dataset("/Users/isabelaconde/Desktop/tilted_bl/decay_soln_V20_mu1e0_eps1e-3S1e-3.nc")
-    usteady = ds["u"][:]
-    vsteady = ds["v"][:]
-    dbdz_steady = ds["dbdz"][:]
-    zsteady = ds["z"][:]
-
     # init plot
-    fig, ax = subplots(1, 3, figsize=(33pc, 25pc*1.62/3), sharey=true)
+    fig, ax = subplots(1, 3, figsize=(33pc, 33pc*1.62/3), sharey=true)
 
 
     ax[1].set_xlabel(L"Cross-slope flow $\tilde{u}$")
@@ -42,14 +31,13 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
     for a in ax
         a.ticklabel_format(style="sci", axis="x", scilimits=(-3, 3))
-        a.grid(true)  # <-- add this line
     end
 
     # color map
     colors = pl.cm.viridis(range(1, 0, length=size(datafiles, 1)-1))
 
-    # zoomed z
-    ax[1].set_ylim([0, z_max])
+    # # zoomed z
+    # ax[1].set_ylim([0, 10])
 
     # plot data from `datafiles`
     for i ∈ eachindex(datafiles)
@@ -58,6 +46,7 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
         u = d["u"]
         v = d["v"]
         b = d["b"]
+        Px = d["Px"]
         t = d["t"]
         model = d["model"]
         close(d)
@@ -74,25 +63,20 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
             label = string(L"$\tilde{t}/\tau_A$ = ", Int64(round(t/τ_A)))
         end
         if i == 1
-            color = "mediumblue"
+            color = "r"
         else
             color = colors[i-1, :]
         end
 
         # plot
         ax[1].plot(u, z, c=color)
-        # ax[1].plot(usteady, zsteady, c="r", ls="--", label="Steady State")
         ax[2].plot(v, z, c=color)
-        # ax[2].plot(vsteady, zsteady, c="r", ls="--", label=(i == length(datafiles) ? "Steady State" : ""))
-        # ax[2].axvline(Px, lw=1.0, c=color, ls="--", label=(i == length(datafiles) ? L"\partial_{\tilde x} \tilde P" : ""))
+        ax[2].axvline(Px, lw=1.0, c=color, ls="--", label=(i == length(datafiles) ? L"\partial_{\tilde x} \tilde P" : ""))
         ax[3].plot(N^2 .+ bz,  z, c=color, label=label)
-        # ax[3].plot(b,  z, c=color, label=label)
-        # ax[3].plot(N^2 .+ dbdz_steady, zsteady, c="r", ls="--")
     end
 
     ax[2].legend()
     ax[3].legend()
-
 
     savefig(fname)
     println(fname)

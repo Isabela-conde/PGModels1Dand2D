@@ -194,24 +194,17 @@ end
 Solve 1D equations until `t_final`, saving every `t_save`.
 """
 function evolve(model::Model; t_final, t_save)
-    # unpack
     Δt = model.Δt
-    z = model.z
-    v₀ = model.v₀
-
+    z   = model.z
     nz, ndof, imap = get_dof(z)
+    n_steps = Int(ceil(t_final/Δt))
+    n_save  = Int(floor(t_save/Δt))
 
-    # timestep
-    n_steps = Int64(ceil(t_final/Δt))
-    n_save = Int64(floor(t_save/Δt))
-
-    # get matrices and vectors
     LHS, RHS, rhs = build_linear_system(model)
 
-    # initial condition
-    t = 0
+    t = 0.0
     sol = zeros(ndof)
-    # start with far-field geostrophic flow
+    v₀ = model.v₀
     sol[imap[2, :]] .= v₀
     sol[ndof] = v₀
     u = @view sol[imap[1, :]]
@@ -219,51 +212,47 @@ function evolve(model::Model; t_final, t_save)
     b = @view sol[imap[3, :]]
     Px = @view sol[ndof]
 
+    # --- NEW: storage for time series ---
+    T = Float64[]   # times
+    Q = Float64[]   # column-integrated transport at each saved time
+
+    # helper: generic trapezoid (works for uniform or nonuniform z)
+    trapz_u(u_vec, z_vec) = sum( 0.5 .* (u_vec[1:end-1] .+ u_vec[2:end]) .* diff(z_vec) )
+
     # save initial condition
+    push!(T, t)
+    push!(Q, trapz_u(u, z))
     ofile = joinpath(out_dir, @sprintf("checkpoint%03d.jld2", 0))
     jldsave(ofile; u, v, b, Px, t, model)
     @info "Saved checkpoint to '$ofile'"
     i_save = 1
 
-    # main loop
-    for i=1:n_steps
+    for i = 1:n_steps
         t += Δt
 
-        if BT12 # Benthusyen and Thomas 2012 mixing scheme
-            # update ν, κ based on current state
+        if BT12
             model = set_ν_κ_BT12!(model, u, v, b, z)
-
-            # rebuild the linear system with updated mixing coefficients
             LHS, RHS, rhs = build_linear_system(model)
-
-            # debug
             if i % 10 == 0 && BT12_debug
                 plot_κ_stratification(model, b; i)
             end
         end
 
-
-        if BT12kappa # Benthusyen and Thomas 2012 mixing scheme only kapa chagnes
-            # update κ based on current state
+        if BT12kappa
             model = set_κ_BT12!(model, u, v, b, z)
-
-            # rebuild the linear system with updated mixing coefficients
             LHS, RHS, rhs = build_linear_system(model)
-
-            # debug
             if i % 10 == 0 && BT12_debug
                 plot_κ_stratification(model, b; i)
             end
         end
 
-        # solve linear system
         ldiv!(sol, LHS, RHS*sol + rhs)
 
-        # bt = differentiate(b, t)
-
-        # log
         if i % n_save == 0
-            # save data
+            # --- NEW: record Q(t) at save times ---
+            push!(T, t)
+            push!(Q, trapz_u(u, z))
+
             ofile = joinpath(out_dir, @sprintf("checkpoint%03d.jld2", i_save))
             jldsave(ofile; u, v, b, Px, t, model)
             @info "Saved '$ofile'"
@@ -271,8 +260,11 @@ function evolve(model::Model; t_final, t_save)
         end
     end
 
+    # --- NEW: write the time series once ---
+    jldsave(joinpath(out_dir, "transport_timeseries.jld2"); t=T, Q=Q)
+
     return u, v, b, Px
-end 
+end
 
 function set_ν_κ_BT12!(model, u, v, b, z)
     du_dz = differentiate(u, z)
