@@ -21,19 +21,20 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
 
     # init plot
-    fig, ax = subplots(2, 2, figsize=(30pc, 35pc), sharey=true)
+    fig, ax = subplots(2, 2, figsize=(29pc, 31pc), sharey=true)
 
 
-    ax[1].set_xlabel(L"Cross-slope flow $\tilde{u}$")
-    ax[1].set_ylabel(L"Vertical coordinate $\tilde{z}$")
-    ax[2].set_xlabel(L"Along-slope flow $\tilde{v}$")
+    ax[1].set_xlabel(L"Cross-slope flow $u$")
+    ax[1].set_ylabel(L"Depth $z$")
+    ax[2].set_xlabel(L"Along-slope flow $v$")
 
-    ax[3].set_xlabel(L"Cross-slope watermass transformation $\partial_{\tilde t} \tilde b + \tilde{u}$")
-    ax[2].set_ylabel(L"Vertical coordinate $\tilde{z}$")
+    ax[3].set_xlabel("Cross-slope watermass \ntransformation " * L" $\partial_t b + u$")
+    ax[2].set_ylabel(L"Depth $z$")
 
-    ax[4].set_xlabel(L"Stratification $N^2 + \partial_{\tilde z} \tilde b$")
 
-    subplots_adjust(bottom=0.15, top=0.92, left=0.1, right=0.9, wspace=0.25, hspace=0.25)
+    ax[4].set_xlabel(L"Stratification $N^2 + \partial_z b$")
+
+    subplots_adjust(bottom=0.15, top=0.92, left=0.1, right=0.9, wspace=0.15, hspace=0.3)
 
     for a in ax
         a.ticklabel_format(style="sci", axis="x", scilimits=(-3, 3))
@@ -52,27 +53,28 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
     for i ∈ eachindex(datafiles)
         # load
         d = jldopen(datafiles[i], "r")
-        u = d["u"]
-        v = d["v"]
-        b = d["b"]
-        t = d["t"]        
+        u = d["u"]*V
+        v = d["v"]*V
+        b = d["b"]*B
+        t = d["t"]*T      
         
         model = d["model"]
         close(d)
         z = model.z
-        N = model.N
-
+        Ñ = model.N
+        N = sqrt(1e-5)
+        κ = 1e-4
+        
         # stratification
         bz = differentiate(b, z) 
         bt = -u .+ differentiate(κ.*(N^2 .+ bz),z)
-
-
 
         # colors and labels
         if t == Inf
             label = "Steady state"
         else
-            label = string(L"$\tilde{t}$ = ", Int64(round(t)))
+            # convert from seconds to hours
+            label = string(L"$t$ = ", Int64(round(t/60/60/24)), " days")
         end
 
         if i == 1
@@ -91,7 +93,13 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
     # ax[2].legend()
     ax[4].legend()
+    # forces 1e-3 on the u and v plots
+    ax[1].ticklabel_format(style="sci", axis="x", scilimits=(-3, -3))
+    # ax[2].ticklabel_format(style="sci", axis="x", scilimits=(-3, -3))
 
+    # default scientific formatting for the other two
+    ax[3].ticklabel_format(style="sci", axis="x")
+    ax[4].ticklabel_format(style="sci", axis="x")
 
     savefig(fname)
     println(fname)

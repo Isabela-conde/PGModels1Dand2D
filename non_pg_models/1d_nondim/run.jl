@@ -9,7 +9,7 @@ if !isdir(out_dir)
 end
 
 include("model.jl") 
-# include("evolution_damp.jl")
+# include("evolution_dampB.jl")
 include("evolution.jl")
 
 # include("plotting_damp.jl")
@@ -27,11 +27,11 @@ include("plotting_transport.jl")
 canonical = true
 
 τ_A = 2e0 # nondim arrest time
-τ_S = 2e2 # nondim spindown time
+τ_S = 5e2 # nondim spindown time
 Ek = 1/τ_S^2 # Ekman number
 S = 1/τ_A # slope Burger number
 H = τ_S # depth (z ∈ [0, H] ⟹ z̃ ∈ [0, H/δ = 1/sqrt(Ek) = τ_S])
-v₀ = 1 # initial farfield along-slope flow
+v₀ = 10 # initial farfield along-slope flow
 N = 1 # background stratification
 
 # timestep
@@ -67,28 +67,26 @@ BT12_debug = false
 BT12kappa = true
 
 κ_b = 100*κ0
-r =  @. 0*exp(-z/h)
-z_max = 100
+r =  0 #1e-3 #
+rr =@. 0*exp(-z/h)
+z_max = 50
 
 # store in model
-model = Model(S, v₀, N, Δt, z, ν, κ, r; canonical)
+model = Model(S, v₀, N, Δt, z, ν, κ, rr; canonical)
 
 ################################################################################
 # run single integration
 ################################################################################
 
-u, v, b, Px = evolve(model; t_final=500, t_save=50)
+u, v, b, Px = evolve(model; t_final=200, t_save=40)
 
 ################################################################################
 # plots
-################################################################################
+###############################################################################
 
 path = ""
-i_saves = 0:1:10
+i_saves = 0:1:5
 dfiles = [joinpath(out_dir, @sprintf("checkpoint%03d.jld2", i)) for i in i_saves]
-profile_plot(dfiles)
-
-
 
 # print dimensional parameters 
 
@@ -100,6 +98,14 @@ f = 1e-4
 θ = sqrt(f^2/(N^2* τ_A))
 V = (f*δ)/θ
 V∞ = v₀*V
+T = 1/f
+B = (V*N^2*θ)/f
+
+profile_plot(dfiles)
+
+
+
+
 
 # print non dim parameters
 println("Parameters:")
