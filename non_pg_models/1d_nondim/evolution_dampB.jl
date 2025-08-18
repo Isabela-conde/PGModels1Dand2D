@@ -54,7 +54,6 @@ function build_linear_system(model::Model)
     ν = model.ν
     κ = model.κ
     z = model.z
-    r = model.r
     Δt = model.Δt
     canonical = model.canonical
     v₀ = model.v₀
@@ -75,15 +74,13 @@ function build_linear_system(model::Model)
         # dzz stencil
         fd_zz = mkfdstencil(z[j-1:j+1], z[j], 2)
 
-        # 1st eqtn: u_t = v - Px + S*b + (ν*u_z)_z -r*u
+        # 1st eqtn: u_t = v - Px + S*b + (ν*u_z)_z
         row = imap[1, j]
         # time derivative
         add_to_matrix!(LHS, row, row, 1/Δt)
         add_to_matrix!(RHS, row, row, 1/Δt)
         # first term RHS
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j], 1)
-        add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -r[j])
-
         # second term RHS
         add_to_CN_matrices!(LHS, RHS, row, ndof, -1)
         # third term RHS
@@ -93,7 +90,6 @@ function build_linear_system(model::Model)
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
 
-        
         # 2nd eqtn: v_t = -u + (ν*v_z)_z
         row = imap[2, j]
         # time derivative
@@ -101,13 +97,10 @@ function build_linear_system(model::Model)
         add_to_matrix!(RHS, row, row, 1/Δt)
         # first term:
         add_to_CN_matrices!(LHS, RHS, row, imap[1, j], -1)
-        # second term: dz(ν*dz(v))) = dz(ν)*dz(v) + ν*dzz(v) - r*v - r*v₀
+        # second term: dz(ν*dz(v))) = dz(ν)*dz(v) + ν*dzz(v)
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j-1], ν_z*fd_z[1] + ν[j]*fd_zz[1])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j],   ν_z*fd_z[2] + ν[j]*fd_zz[2])
         add_to_CN_matrices!(LHS, RHS, row, imap[2, j+1], ν_z*fd_z[3] + ν[j]*fd_zz[3])
-        # add_to_CN_matrices!(LHS, RHS, row, imap[2, j], -r[j])
-        # rhs[row] = -r[j]*v₀
-
 
         # 3rd eqtn: b_t = -u + [κ*(1 + b_z)]_z -r*b
         row = imap[3, j]

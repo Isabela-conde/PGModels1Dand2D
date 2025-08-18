@@ -297,7 +297,7 @@ function set_ν_κ_BT12!(model, u, v, b, z)
 
     # smooth κ_new with a 5-point moving average
     κ_smooth = copy(κ_new) #k_smooth a copy of κ_new
-    w = 0.25
+    w = 0.001
     for j in 2:nz-1
         κ_smooth[j] =  ( w*κ_new[j-1] + (1-2*w)*κ_new[j] + w*κ_new[j+1] )  # κ_new[j] 
     end
