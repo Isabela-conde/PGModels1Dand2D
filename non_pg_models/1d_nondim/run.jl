@@ -26,8 +26,8 @@ include("plotting_transport.jl")
 # canonical or transport-constrained case?
 canonical = true
 
-τ_A = 2e0 # nondim arrest time
-τ_S = 5e2 # nondim spindown time
+τ_A = 4e0 # nondim arrest time
+τ_S = 1e2 # nondim spindown time
 Ek = 1/τ_S^2 # Ekman number
 S = 1/τ_A # slope Burger number
 H = τ_S # depth (z ∈ [0, H] ⟹ z̃ ∈ [0, H/δ = 1/sqrt(Ek) = τ_S])
@@ -35,10 +35,10 @@ v₀ = 10 # initial farfield along-slope flow
 N = 1 # background stratification
 
 # timestep
-Δt = minimum([τ_S/1e4, τ_A/1e4])
+Δt = minimum([τ_S/5e4, τ_A/5e4])
 
 # number of grid points
-nz = 2^11
+nz = 2^12
 
 # grid (chebyshev, z = 0 is bottom)
 # z = @. H*(1 - cos(pi*(0:nz-1)/(nz-1)))/2
@@ -61,15 +61,15 @@ h = 1
 κ = @. κ0 + κ1*exp(-z/h)
 
 # for BT12 mixing scheme
-BT12 = false
+BT12 = true
 BT12_debug = false
 
-BT12kappa = true
+BT12kappa = false
 
 κ_b = 100*κ0
-r =  0 #1e-3 #
+r =  0#1e-3 #
 rr =@. 0*exp(-z/h)
-z_max = 50
+z_max = 100
 
 # store in model
 model = Model(S, v₀, N, Δt, z, ν, κ, rr; canonical)
@@ -78,7 +78,7 @@ model = Model(S, v₀, N, Δt, z, ν, κ, rr; canonical)
 # run single integration
 ################################################################################
 
-u, v, b, Px = evolve(model; t_final=200, t_save=40)
+u, v, b, Px = evolve(model; t_final=10, t_save=1)
 
 ################################################################################
 # plots
@@ -100,6 +100,10 @@ V = (f*δ)/θ
 V∞ = v₀*V
 T = 1/f
 B = (V*N^2*θ)/f
+
+
+# dir = "/Users/isabelaconde/Documents/GitHub/PGModels1Dand2D/non_pg_models/1d_nondim/kappa_damped_v010/"
+# dfiles = [joinpath(dir, @sprintf("checkpoint%03d.jld2", i)) for i in i_saves]
 
 profile_plot(dfiles)
 

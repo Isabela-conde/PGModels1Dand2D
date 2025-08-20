@@ -48,6 +48,12 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
     ax[1].set_ylim([0, z_max])
     # ax[3].set_xlim([-0.002, 0.08])
 
+    ds = Dataset("/Users/isabelaconde/Desktop/tilted_bl/decay_soln_V010_mu1e-3.nc")
+    usteady = ds["u"][:]
+    vsteady = ds["v"][:]
+    dbdz_steady = ds["dbdz"][:]
+    zsteady = ds["z"][:]
+
 
     # plot data from `datafiles`
     for i ∈ eachindex(datafiles)
@@ -74,7 +80,7 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
             label = "Steady state"
         else
             # convert from seconds to hours
-            label = string(L"$t$ = ", Int64(round(t/60/60/24)), " days")
+            label = string(L"$t$ = ", Int64(round(t/60/60/60)), " hours")
         end
 
         if i == 1
@@ -88,6 +94,11 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
         ax[3].plot(bt + u,z, c=color)
         ax[2].plot(v,z, color = color)
         ax[4].plot(N^2 .+ bz,  z, c=color, label=label)
+
+        # steady state
+        # ax[1].plot(usteady*V, zsteady, c="r", ls="--", label="Steady State")
+        # ax[2].plot(vsteady*V, zsteady, c="r", ls="--", label=(i == length(datafiles) ? "Steady State" : ""))
+        # ax[4].plot(1e-5 .+ dbdz_steady*B, zsteady, c="r", ls="--")
 
     end
 

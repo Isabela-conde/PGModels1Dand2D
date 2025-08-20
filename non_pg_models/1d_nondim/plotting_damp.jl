@@ -86,14 +86,18 @@ function profile_plot(datafiles; fname=joinpath(out_dir, "profiles.png"))
 
         # plot
         ax[1].plot(u, z, c=color)
-        ax[1].plot(usteady, zsteady, c="r", ls="--", label="Steady State")
         ax[2].plot(v, z, c=color)
-        ax[2].plot(vsteady, zsteady, c="r", ls="--", label=(i == length(datafiles) ? "Steady State" : ""))
-        ax[3].plot(bt + u,z, c=color)
         # ax[2].axvline(Px, lw=1.0, c=color, ls="--", label=(i == length(datafiles) ? L"\partial_{\tilde x} \tilde P" : ""))
         ax[4].plot(N^2 .+ bz,  z, c=color, label=label)
         # ax[4].plot(b, z, c=color, label=label)
+        ax[3].plot(bt + u,z, c=color)
+
+        # steady state
+        ax[1].plot(usteady, zsteady, c="r", ls="--", label="Steady State")
+        ax[2].plot(vsteady, zsteady, c="r", ls="--", label=(i == length(datafiles) ? "Steady State" : ""))
         ax[4].plot(N^2 .+ dbdz_steady, zsteady, c="r", ls="--")
+
+
     end
 
     ax[2].legend()
